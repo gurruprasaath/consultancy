@@ -1,0 +1,8 @@
+# Food7 Frontend
+
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store

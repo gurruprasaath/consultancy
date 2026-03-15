@@ -1,0 +1,7 @@
+# Food7 Backend
+
+node_modules/
+.env
+uploads/
+*.log
+.DS_Store
