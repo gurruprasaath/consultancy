@@ -9,7 +9,7 @@ import axios from 'axios';
 // In Railway (separate services): set VITE_API_URL to the backend Railway URL
 const BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+  : 'https://consultancy-k8nb.onrender.com/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
