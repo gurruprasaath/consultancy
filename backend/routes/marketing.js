@@ -11,6 +11,7 @@ const {
   getSuggestions,
   getCustomers,
   sendEmail,
+  sendSMS,
   sendWhatsApp,
   sendInstagram,
 } = require('../controllers/marketingController');
@@ -27,6 +28,7 @@ router.get('/customers', getCustomers);
 
 // Distribution routes
 router.post('/send/email', sendEmail);
+router.post('/send/sms', sendSMS);
 router.post('/send/whatsapp', sendWhatsApp);
 router.post('/send/instagram', sendInstagram);
 

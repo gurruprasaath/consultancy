@@ -29,6 +29,12 @@ const CHANNELS = [
     notConfigured: 'Add EMAIL_USER + EMAIL_APP_PASSWORD to .env (Gmail App Password)',
   },
   {
+    key: 'sms', label: 'SMS (Free)', Icon: MessageSquare,
+    color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)',
+    desc: 'Send SMS via free providers (Fast2SMS/TextBelt)',
+    notConfigured: 'Add FAST2SMS_API_KEY to .env for 10 free SMS/day (India) or use TextBelt (Global, 1 SMS/day)',
+  },
+  {
     key: 'whatsapp', label: 'WhatsApp', Icon: MessageSquare,
     color: '#25D366', bg: 'rgba(37,211,102,0.1)', border: 'rgba(37,211,102,0.3)',
     desc: 'Send to all customers with phone numbers',
@@ -147,6 +153,8 @@ const Marketing = () => {
           subject: `Special from Food7 🍽️ — ${generatedContent.title || ''}`,
           context: typeof formData.context === 'string' ? formData.context : '',
         });
+      } else if (channel === 'sms') {
+        res = await marketingAPI.sendSMS({ content });
       } else if (channel === 'whatsapp') {
         res = await marketingAPI.sendWhatsApp({ content });
       } else if (channel === 'instagram') {
@@ -169,7 +177,7 @@ const Marketing = () => {
 
   const emailCount = customers.filter(c => c.email).length;
   const phoneCount = customers.filter(c => c.phone).length;
-  const channelCount = { email: emailCount, whatsapp: phoneCount, instagram: 1 };
+  const channelCount = { email: emailCount, sms: phoneCount, whatsapp: phoneCount, instagram: 1 };
 
   return (
     <div className="min-h-screen bg-food7-black p-6">
@@ -518,7 +526,7 @@ const Marketing = () => {
                 {[
                   { label: 'Total Customers', value: customers.length, color: '#C9A84C' },
                   { label: 'With Email', value: emailCount, color: '#4F9EFF' },
-                  { label: 'With WhatsApp', value: phoneCount, color: '#25D366' },
+                  { label: 'With SMS/WhatsApp', value: phoneCount, color: '#F59E0B' },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <span style={{ color: '#7A7570', fontSize: '0.85rem' }}>{label}</span>

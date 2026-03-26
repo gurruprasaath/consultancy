@@ -51,18 +51,31 @@ const seedUsers = async () => {
 
 const seedInventory = async () => {
   console.log('📦 Seeding inventory...');
-  
+
+  const now = new Date();
+  const day = 24 * 60 * 60 * 1000; // ms per day
+
   const items = [
-    { itemName: 'Chicken', category: 'meat', quantity: 50, unit: 'kg', price: 200, reorderLevel: 10 },
-    { itemName: 'Rice', category: 'other', quantity: 100, unit: 'kg', price: 50, reorderLevel: 20 },
-    { itemName: 'Tomatoes', category: 'vegetables', quantity: 30, unit: 'kg', price: 40, reorderLevel: 10 },
-    { itemName: 'Onions', category: 'vegetables', quantity: 25, unit: 'kg', price: 30, reorderLevel: 10 },
-    { itemName: 'Paneer', category: 'dairy', quantity: 15, unit: 'kg', price: 300, reorderLevel: 5 },
-    { itemName: 'Milk', category: 'dairy', quantity: 40, unit: 'l', price: 60, reorderLevel: 10 },
-    { itemName: 'Spices Mix', category: 'spices', quantity: 20, unit: 'kg', price: 500, reorderLevel: 5 },
-    { itemName: 'Cooking Oil', category: 'other', quantity: 50, unit: 'l', price: 150, reorderLevel: 10 },
-    { itemName: 'Flour', category: 'other', quantity: 80, unit: 'kg', price: 40, reorderLevel: 15 },
-    { itemName: 'Soft Drinks', category: 'beverages', quantity: 100, unit: 'pieces', price: 30, reorderLevel: 20 },
+    // Already expired (2 days ago)
+    { itemName: 'Chicken',     category: 'meat',      quantity: 50,  unit: 'kg',     price: 200, reorderLevel: 10, expiryDate: new Date(now.getTime() - 2  * day) },
+    // Expires today
+    { itemName: 'Rice',        category: 'other',     quantity: 100, unit: 'kg',     price: 50,  reorderLevel: 20, expiryDate: new Date(now.getTime() + 0  * day) },
+    // Expiring in 3 days
+    { itemName: 'Tomatoes',    category: 'vegetables',quantity: 30,  unit: 'kg',     price: 40,  reorderLevel: 10, expiryDate: new Date(now.getTime() + 3  * day) },
+    // Expiring in 6 days
+    { itemName: 'Onions',      category: 'vegetables',quantity: 25,  unit: 'kg',     price: 30,  reorderLevel: 10, expiryDate: new Date(now.getTime() + 6  * day) },
+    // Expiring in 5 days
+    { itemName: 'Paneer',      category: 'dairy',     quantity: 15,  unit: 'kg',     price: 300, reorderLevel: 5,  expiryDate: new Date(now.getTime() + 5  * day) },
+    // Expiring in 2 days
+    { itemName: 'Milk',        category: 'dairy',     quantity: 40,  unit: 'l',      price: 60,  reorderLevel: 10, expiryDate: new Date(now.getTime() + 2  * day) },
+    // Healthy – 6 months out
+    { itemName: 'Spices Mix',  category: 'spices',    quantity: 20,  unit: 'kg',     price: 500, reorderLevel: 5,  expiryDate: new Date(now.getTime() + 180 * day) },
+    // Healthy – 1 year out
+    { itemName: 'Cooking Oil', category: 'other',     quantity: 50,  unit: 'l',      price: 150, reorderLevel: 10, expiryDate: new Date(now.getTime() + 365 * day) },
+    // Healthy – 9 months out
+    { itemName: 'Flour',       category: 'other',     quantity: 80,  unit: 'kg',     price: 40,  reorderLevel: 15, expiryDate: new Date(now.getTime() + 270 * day) },
+    // No expiry date (beverages often have shelf-life stamped on can)
+    { itemName: 'Soft Drinks', category: 'beverages', quantity: 100, unit: 'pieces', price: 30,  reorderLevel: 20, expiryDate: new Date(now.getTime() + 120 * day) },
   ];
 
   await Inventory.deleteMany({});
@@ -79,7 +92,11 @@ const seedOrders = async () => {
   await Order.deleteMany({});
   
   // Create orders one by one to allow pre-save hook to work
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+
   const order1 = new Order({
+    orderNumber: `F7-${dateStr}-1001`,
     items: [
       { name: 'Butter Chicken', quantity: 2, price: 350, total: 700 },
       { name: 'Garlic Naan', quantity: 4, price: 50, total: 200 },
@@ -96,8 +113,9 @@ const seedOrders = async () => {
     createdAt: today,
   });
   await order1.save();
-  
+
   const order2 = new Order({
+    orderNumber: `F7-${dateStr}-1002`,
     items: [
       { name: 'Biryani', quantity: 1, price: 300, total: 300 },
       { name: 'Raita', quantity: 1, price: 80, total: 80 },
@@ -114,8 +132,9 @@ const seedOrders = async () => {
     createdAt: new Date(today.getTime() - 2 * 60 * 60 * 1000),
   });
   await order2.save();
-  
+
   const order3 = new Order({
+    orderNumber: `F7-${dateStr}-1003`,
     items: [
       { name: 'Paneer Tikka', quantity: 1, price: 280, total: 280 },
       { name: 'Dal Makhani', quantity: 1, price: 200, total: 200 },

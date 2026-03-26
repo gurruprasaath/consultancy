@@ -6,6 +6,7 @@
 const Order = require('../models/Order');
 const Analytics = require('../models/Analytics');
 const Inventory = require('../models/Inventory');
+const MenuItem = require('../models/MenuItem');
 const { sendBillEmail, sendCouponEmail, sendOwnerOrderAlert } = require('../services/emailService');
 const { recordVisitAndCheckLoyalty, redeemCoupon: validateCoupon, markCouponUsed } = require('../services/couponService');
 
@@ -138,12 +139,18 @@ exports.createOrder = async (req, res, next) => {
       await markCouponUsed(appliedCouponCode, orderNumber);
     }
 
-    // Update inventory
+    // Update inventory based on recipe ingredients
     for (const item of items) {
-      const inventoryItem = await Inventory.findOne({ itemName: item.name });
-      if (inventoryItem) {
-        inventoryItem.addUsage(item.quantity);
-        await inventoryItem.save();
+      const menuItem = await MenuItem.findOne({ name: item.name }).populate('ingredients.inventoryItem');
+      if (menuItem && menuItem.ingredients && menuItem.ingredients.length > 0) {
+        // Deduct ingredients based on recipe
+        for (const ingredient of menuItem.ingredients) {
+          if (ingredient.inventoryItem) {
+            const usedQty = ingredient.quantity * item.quantity;
+            ingredient.inventoryItem.addUsage(usedQty, 0);
+            await ingredient.inventoryItem.save();
+          }
+        }
       }
     }
 

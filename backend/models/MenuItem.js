@@ -14,6 +14,24 @@ const menuItemSchema = new mongoose.Schema({
   isAvailable: { type: Boolean, default: true },
   image: { type: String },
   spiceLevel: { type: String, enum: ['mild', 'medium', 'hot', 'extra-hot'], default: 'medium' },
+  // Recipe ingredients linking menu items to inventory
+  ingredients: [{
+    inventoryItem: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Inventory',
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    unit: {
+      type: String,
+      required: true,
+      enum: ['kg', 'g', 'l', 'ml', 'pieces', 'packets'],
+    },
+  }],
 }, { timestamps: true });
 
 menuItemSchema.index({ category: 1, isAvailable: 1 });

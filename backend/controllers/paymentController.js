@@ -13,6 +13,7 @@ const Razorpay = require('razorpay');
 const Order = require('../models/Order');
 const Analytics = require('../models/Analytics');
 const Inventory = require('../models/Inventory');
+const MenuItem = require('../models/MenuItem');
 
 function generateOrderNumber() {
   const now = new Date();
@@ -166,13 +167,18 @@ exports.testSuccessPayment = async (req, res, next) => {
       await analytics.save();
     } catch (_) { /* non-fatal */ }
 
-    // Deduct inventory (best-effort)
+    // Deduct inventory based on recipe ingredients (best-effort)
     try {
       for (const item of (orderData.items || [])) {
-        const inv = await Inventory.findOne({ itemName: item.name });
-        if (inv) {
-          inv.quantity = Math.max(0, inv.quantity - item.quantity * 0.25);
-          await inv.save();
+        const menuItem = await MenuItem.findOne({ name: item.name }).populate('ingredients.inventoryItem');
+        if (menuItem && menuItem.ingredients && menuItem.ingredients.length > 0) {
+          for (const ingredient of menuItem.ingredients) {
+            if (ingredient.inventoryItem) {
+              const usedQty = ingredient.quantity * item.quantity;
+              ingredient.inventoryItem.addUsage(usedQty, 0);
+              await ingredient.inventoryItem.save();
+            }
+          }
         }
       }
     } catch (_) { /* non-fatal */ }
@@ -256,13 +262,18 @@ exports.verifyPayment = async (req, res, next) => {
       await analytics.save();
     } catch (_) { /* non-fatal */ }
 
-    // Deduct inventory (best-effort)
+    // Deduct inventory based on recipe ingredients (best-effort)
     try {
       for (const item of (orderData.items || [])) {
-        const inv = await Inventory.findOne({ itemName: item.name });
-        if (inv) {
-          inv.quantity = Math.max(0, inv.quantity - item.quantity * 0.25);
-          await inv.save();
+        const menuItem = await MenuItem.findOne({ name: item.name }).populate('ingredients.inventoryItem');
+        if (menuItem && menuItem.ingredients && menuItem.ingredients.length > 0) {
+          for (const ingredient of menuItem.ingredients) {
+            if (ingredient.inventoryItem) {
+              const usedQty = ingredient.quantity * item.quantity;
+              ingredient.inventoryItem.addUsage(usedQty, 0);
+              await ingredient.inventoryItem.save();
+            }
+          }
         }
       }
     } catch (_) { /* non-fatal */ }

@@ -10,11 +10,35 @@ import {
   Package, Plus, TrendingUp, AlertTriangle, Trash2,
   RefreshCw, Brain, BarChart3, ChevronUp, ChevronDown,
   Filter, ArrowUpDown, Zap, ShieldCheck, AlertCircle,
-  CheckCircle2, Clock, Search,
+  CheckCircle2, Clock, Search, CalendarDays,
 } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+// ── Expiry helpers ──────────────────────────────────────────────────────────
+function getExpiryStatus(expiryDate) {
+  if (!expiryDate) return 'no_date';
+  const now = new Date();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysLeft = Math.ceil((new Date(expiryDate) - now) / msPerDay);
+  if (daysLeft <= 0) return 'expired';
+  if (daysLeft <= 7) return 'expiring_soon';
+  return 'ok';
+}
+
+function getExpiryDaysLeft(expiryDate) {
+  if (!expiryDate) return null;
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.ceil((new Date(expiryDate) - new Date()) / msPerDay);
+}
+
+const EXPIRY_META = {
+  expired:      { label: 'EXPIRED',       bg: 'rgba(239,68,68,0.18)',  border: 'rgba(239,68,68,0.45)',  text: '#F87171' },
+  expiring_soon:{ label: 'EXPIRING SOON', bg: 'rgba(251,146,60,0.15)', border: 'rgba(251,146,60,0.4)',  text: '#FB923C' },
+  ok:           { label: 'VALID',         bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.3)', text: '#34D399' },
+  no_date:      { label: 'NO DATE',       bg: 'rgba(156,163,175,0.1)', border: 'rgba(156,163,175,0.25)',text: '#9CA3AF' },
+};
 
 // ── Urgency helpers ───────────────────────────────────────────────────────────
 function getUrgency(item) {
@@ -83,7 +107,7 @@ const Inventory = () => {
   const [forecastDays, setForecastDays] = useState(14);
 
   const [formData, setFormData] = useState({
-    itemName: '', category: 'vegetables', quantity: '', unit: 'kg', price: '', reorderLevel: '',
+    itemName: '', category: 'vegetables', quantity: '', unit: 'kg', price: '', reorderLevel: '', expiryDate: '',
   });
 
   useEffect(() => {
@@ -158,6 +182,12 @@ const Inventory = () => {
     };
   }, [forecast]);
 
+  // ── Expiry stats (from raw items list) ───────────────────────────────────
+  const expiryStats = useMemo(() => ({
+    expired:      items.filter(i => getExpiryStatus(i.expiryDate) === 'expired').length,
+    expiring_soon:items.filter(i => getExpiryStatus(i.expiryDate) === 'expiring_soon').length,
+  }), [items]);
+
   // ── Sort toggle ───────────────────────────────────────────────────────────
   const handleSort = (col) => {
     if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -168,15 +198,17 @@ const Inventory = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const r = await inventoryAPI.create({
+      const payload = {
         ...formData,
         quantity:     parseFloat(formData.quantity),
         price:        parseFloat(formData.price),
         reorderLevel: parseFloat(formData.reorderLevel),
-      });
+      };
+      if (!formData.expiryDate) delete payload.expiryDate;
+      const r = await inventoryAPI.create(payload);
       if (r.success) {
         setShowAddModal(false);
-        setFormData({ itemName: '', category: 'vegetables', quantity: '', unit: 'kg', price: '', reorderLevel: '' });
+        setFormData({ itemName: '', category: 'vegetables', quantity: '', unit: 'kg', price: '', reorderLevel: '', expiryDate: '' });
         fetchInventory();
       }
     } catch (e) { console.error(e); }
@@ -357,12 +389,14 @@ const Inventory = () => {
           {stats && (
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
               {[
-                { label: 'Total Items', val: stats.total,    color: '#F0EDE8', bg: 'rgba(255,255,255,0.06)' },
-                { label: 'Critical',    val: stats.critical, color: '#F87171', bg: 'rgba(239,68,68,0.12)'   },
-                { label: 'Warning',     val: stats.warning,  color: '#FB923C', bg: 'rgba(251,146,60,0.12)'  },
-                { label: 'Need Restock',val: stats.restock,  color: '#FACC15', bg: 'rgba(250,204,21,0.1)'   },
-                { label: 'Healthy',     val: stats.healthy,  color: '#34D399', bg: 'rgba(52,211,153,0.1)'   },
+                { label: 'Total Items',    val: stats.total,    color: '#F0EDE8', bg: 'rgba(255,255,255,0.06)' },
+                { label: 'Critical',       val: stats.critical, color: '#F87171', bg: 'rgba(239,68,68,0.12)'   },
+                { label: 'Warning',        val: stats.warning,  color: '#FB923C', bg: 'rgba(251,146,60,0.12)'  },
+                { label: 'Need Restock',   val: stats.restock,  color: '#FACC15', bg: 'rgba(250,204,21,0.1)'   },
+                { label: 'Healthy',        val: stats.healthy,  color: '#34D399', bg: 'rgba(52,211,153,0.1)'   },
                 { label: 'High AI Confidence', val: stats.highConf, color: '#A78BFA', bg: 'rgba(167,139,250,0.1)' },
+                { label: 'Expired',        val: expiryStats.expired,       color: '#F87171', bg: 'rgba(239,68,68,0.12)'   },
+                { label: 'Expiring ≤7d',   val: expiryStats.expiring_soon, color: '#FB923C', bg: 'rgba(251,146,60,0.12)'  },
               ].map(s => (
                 <div key={s.label} style={{
                   padding: '6px 14px', borderRadius: 20,
@@ -523,6 +557,33 @@ const Inventory = () => {
                         </div>
                       ))}
                     </div>
+
+                    {/* Expiry row */}
+                    {item.expiryDate && (() => {
+                      const expStatus = getExpiryStatus(item.expiryDate);
+                      const expMeta   = EXPIRY_META[expStatus];
+                      const daysLeft  = getExpiryDaysLeft(item.expiryDate);
+                      return (
+                        <div style={{
+                          marginTop: 8, padding: '6px 10px', borderRadius: 8,
+                          background: expMeta.bg, border: `1px solid ${expMeta.border}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <CalendarDays size={12} color={expMeta.text} />
+                            <span style={{ fontSize: '0.68rem', color: expMeta.text, fontWeight: 700 }}>
+                              {expMeta.label}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.68rem', color: '#A8A29E' }}>
+                            {daysLeft <= 0
+                              ? `${Math.abs(daysLeft)}d ago`
+                              : daysLeft === 1 ? 'Tomorrow'
+                              : `${daysLeft}d left · ${new Date(item.expiryDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'2-digit' })}`}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </motion.div>
                 );
               })}
@@ -604,6 +665,30 @@ const Inventory = () => {
                         <span className="text-food7-white/60 text-sm">Reorder Level:</span>
                         <span className="text-food7-white/80 text-sm">{item.reorderLevel} {item.unit}</span>
                       </div>
+                      {/* Expiry date row */}
+                      {item.expiryDate && (() => {
+                        const expStatus = getExpiryStatus(item.expiryDate);
+                        const expMeta   = EXPIRY_META[expStatus];
+                        const daysLeft  = getExpiryDaysLeft(item.expiryDate);
+                        return (
+                          <div className="flex justify-between items-center" style={{ marginTop: 4 }}>
+                            <span className="text-food7-white/60 text-sm flex items-center gap-1">
+                              <CalendarDays size={12} /> Expires:
+                            </span>
+                            <span style={{
+                              fontSize: '0.75rem', fontWeight: 700, color: expMeta.text,
+                              background: expMeta.bg, border: `1px solid ${expMeta.border}`,
+                              padding: '2px 8px', borderRadius: 6,
+                            }}>
+                              {daysLeft <= 0
+                                ? `${Math.abs(daysLeft)}d AGO`
+                                : daysLeft <= 7
+                                ? `${daysLeft}d left`
+                                : new Date(item.expiryDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'2-digit' })}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className={`px-3 py-2 rounded-lg border text-center text-sm font-medium ${status.color}`}>
                       {status.text}
@@ -650,6 +735,18 @@ const Inventory = () => {
                     onChange={e => setFormData({ ...formData, price: e.target.value })} required />
                   <Input label="Reorder Level" type="number" step="0.1" value={formData.reorderLevel}
                     onChange={e => setFormData({ ...formData, reorderLevel: e.target.value })} required />
+                  <div>
+                    <label className="block text-sm font-medium text-food7-white mb-2">
+                      Expiry Date <span style={{ color: '#7A7570', fontWeight: 400 }}>(optional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.expiryDate}
+                      onChange={e => setFormData({ ...formData, expiryDate: e.target.value })}
+                      className="input-field w-full"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
                   <div className="flex gap-3 pt-4">
                     <Button type="submit" className="flex-1">Add Item</Button>
                     <Button type="button" variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">Cancel</Button>

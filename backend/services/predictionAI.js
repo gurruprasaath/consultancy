@@ -135,16 +135,20 @@ function generateRecommendation(daysUntilStockout, trend, wastePercentage) {
  * Analyze all inventory and generate insights
  */
 function analyzeInventory(inventoryItems) {
+  const now = new Date();
+  const msPerDay = 1000 * 60 * 60 * 24;
+
   const insights = {
     lowStockItems: [],
     highWasteItems: [],
     trendingItems: [],
+    expiringItems: [],
     recommendations: [],
   };
   
   inventoryItems.forEach(item => {
     const prediction = predictDemand(item);
-    
+
     if (prediction.shouldReorder) {
       insights.lowStockItems.push({
         name: item.itemName,
@@ -153,19 +157,32 @@ function analyzeInventory(inventoryItems) {
         recommendedQty: prediction.recommendedOrderQty,
       });
     }
-    
+
     if (parseFloat(prediction.wastePercentage) > 10) {
       insights.highWasteItems.push({
         name: item.itemName,
         wastePercentage: prediction.wastePercentage,
       });
     }
-    
+
     if (prediction.trend === 'increasing') {
       insights.trendingItems.push({
         name: item.itemName,
         trend: 'up',
       });
+    }
+
+    // Expiry analysis
+    if (item.expiryDate) {
+      const daysLeft = Math.ceil((new Date(item.expiryDate) - now) / msPerDay);
+      if (daysLeft <= 7) {
+        insights.expiringItems.push({
+          name: item.itemName,
+          expiryDate: item.expiryDate,
+          daysLeft,
+          status: daysLeft <= 0 ? 'expired' : 'expiring_soon',
+        });
+      }
     }
   });
   
@@ -173,13 +190,22 @@ function analyzeInventory(inventoryItems) {
   if (insights.lowStockItems.length > 0) {
     insights.recommendations.push(`${insights.lowStockItems.length} items need reordering`);
   }
-  
+
   if (insights.highWasteItems.length > 0) {
     insights.recommendations.push(`${insights.highWasteItems.length} items have high waste - review storage`);
   }
-  
+
   if (insights.trendingItems.length > 0) {
     insights.recommendations.push(`${insights.trendingItems.length} items trending up - stock accordingly`);
+  }
+
+  const expiredCount  = insights.expiringItems.filter(i => i.status === 'expired').length;
+  const expiringCount = insights.expiringItems.filter(i => i.status === 'expiring_soon').length;
+  if (expiredCount > 0) {
+    insights.recommendations.push(`🚨 ${expiredCount} item(s) have EXPIRED - remove immediately`);
+  }
+  if (expiringCount > 0) {
+    insights.recommendations.push(`⚠️ ${expiringCount} item(s) expire within 7 days - use or discard`);
   }
   
   return insights;

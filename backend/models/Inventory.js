@@ -41,6 +41,10 @@ const inventorySchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  expiryDate: {
+    type: Date,
+    default: null,
+  },
   lastRestocked: {
     type: Date,
     default: Date.now,
@@ -75,6 +79,17 @@ const inventorySchema = new mongoose.Schema({
 // Virtual for low stock status
 inventorySchema.virtual('isLowStock').get(function() {
   return this.quantity <= this.reorderLevel;
+});
+
+// Virtual for expiry status
+inventorySchema.virtual('expiryStatus').get(function() {
+  if (!this.expiryDate) return 'no_date';
+  const now = new Date();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysLeft = Math.ceil((this.expiryDate - now) / msPerDay);
+  if (daysLeft <= 0) return 'expired';
+  if (daysLeft <= 7) return 'expiring_soon';
+  return 'ok';
 });
 
 // Method to add daily usage

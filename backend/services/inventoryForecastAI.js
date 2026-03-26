@@ -317,6 +317,7 @@ async function forecastInventory({
       predictedTotalDemand: Math.ceil(predictedTotal),
       recommendedRestockQty,
       confidence,
+      expiryDate: item.expiryDate || null,
     };
   });
 

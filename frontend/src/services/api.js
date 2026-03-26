@@ -115,6 +115,7 @@ export const marketingAPI = {
   // Distribution
   getCustomers: () => api.get('/marketing/customers'),
   sendEmail: (data) => api.post('/marketing/send/email', data),
+  sendSMS: (data) => api.post('/marketing/send/sms', data),
   sendWhatsApp: (data) => api.post('/marketing/send/whatsapp', data),
   sendInstagram: (data) => api.post('/marketing/send/instagram', data),
 };

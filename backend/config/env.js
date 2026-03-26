@@ -45,4 +45,7 @@ module.exports = {
   // Instagram Graph API (free)
   instagramToken: process.env.INSTAGRAM_ACCESS_TOKEN,
   instagramAccountId: process.env.INSTAGRAM_ACCOUNT_ID,
+  // SMS Providers (free tiers)
+  fast2smsApiKey: process.env.FAST2SMS_API_KEY, // India - 10 SMS/day free
+  textbeltApiKey: process.env.TEXTBELT_API_KEY, // Global - 1 SMS/day free (or 'textbelt')
 };

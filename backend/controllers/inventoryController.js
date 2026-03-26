@@ -15,15 +15,15 @@ const { forecastInventory } = require('../services/inventoryForecastAI');
 exports.getInventory = async (req, res, next) => {
   try {
     const { category, lowStock } = req.query;
-    
+
     const query = {};
-    
+
     if (category) {
       query.category = category;
     }
-    
+
     let items = await Inventory.find(query).sort({ itemName: 1 });
-    
+
     if (lowStock === 'true') {
       items = items.filter(item => item.quantity <= item.reorderLevel);
     }
@@ -192,7 +192,7 @@ exports.restockItem = async (req, res, next) => {
 exports.getPredictions = async (req, res, next) => {
   try {
     const items = await Inventory.find();
-    
+
     const predictions = items.map(item => ({
       id: item._id,
       itemName: item.itemName,
@@ -213,19 +213,38 @@ exports.getPredictions = async (req, res, next) => {
 
 /**
  * @route   GET /api/inventory/alerts/low-stock
- * @desc    Get low stock alerts
+ * @desc    Get low stock + expiry alerts
  * @access  Private
  */
 exports.getLowStockAlerts = async (req, res, next) => {
   try {
     const items = await Inventory.find();
-    
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+
     const lowStockItems = items.filter(item => item.quantity <= item.reorderLevel);
+    const expiringItems = items.filter(item => {
+      if (!item.expiryDate) return false;
+      const daysLeft = Math.ceil((new Date(item.expiryDate) - now) / msPerDay);
+      return daysLeft <= 7;
+    });
 
     res.json({
       success: true,
       count: lowStockItems.length,
       data: lowStockItems,
+      expiryAlerts: {
+        count: expiringItems.length,
+        items: expiringItems.map(item => ({
+          id:         item._id,
+          itemName:   item.itemName,
+          expiryDate: item.expiryDate,
+          daysLeft:   Math.ceil((new Date(item.expiryDate) - now) / msPerDay),
+          status:     Math.ceil((new Date(item.expiryDate) - now) / msPerDay) <= 0
+            ? 'expired'
+            : 'expiring_soon',
+        })),
+      },
     });
   } catch (error) {
     next(error);
@@ -234,7 +253,7 @@ exports.getLowStockAlerts = async (req, res, next) => {
 
 /**
  * @route   GET /api/inventory/analysis/insights
- * @desc    Get AI inventory insights
+ * @desc    Get AI inventory insights (includes expiry analysis)
  * @access  Private
  */
 exports.getInventoryInsights = async (req, res, next) => {
@@ -258,7 +277,7 @@ exports.getInventoryInsights = async (req, res, next) => {
  */
 exports.getRestockForecast = async (req, res, next) => {
   try {
-    const historyDays = req.query.historyDays ? Number(req.query.historyDays) : undefined;
+    const historyDays  = req.query.historyDays  ? Number(req.query.historyDays)  : undefined;
     const forecastDays = req.query.forecastDays ? Number(req.query.forecastDays) : undefined;
 
     const forecast = await forecastInventory({ historyDays, forecastDays });

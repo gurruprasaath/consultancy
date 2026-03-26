@@ -7,6 +7,7 @@ const Marketing = require('../models/Marketing');
 const { generateMarketingContent, generateSuggestions } = require('../services/marketingAI');
 const { sendBulkEmail } = require('../services/emailService');
 const { sendBulkWhatsApp } = require('../services/whatsappService');
+const { sendBulkSMS } = require('../services/smsService');
 const { postToInstagram } = require('../services/instagramService');
 const Order = require('../models/Order');
 const Inventory = require('../models/Inventory');
@@ -311,6 +312,35 @@ exports.sendEmail = async (req, res, next) => {
     }
 
     const result = await sendBulkEmail(customers, subject || 'Special offer from Food7 🍽️', content, context || '');
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/marketing/send/sms
+ * @desc    Send campaign to all customers via SMS (Free SMS providers)
+ * @access  Private
+ */
+exports.sendSMS = async (req, res, next) => {
+  try {
+    const { content } = req.body;
+    if (!content) return res.status(400).json({ success: false, message: 'Content is required' });
+
+    const orders = await Order.find({ customerPhone: { $exists: true, $ne: '' }, status: 'completed' })
+      .select('customerName customerPhone').lean();
+
+    const seen = new Set();
+    const customers = [];
+    for (const o of orders) {
+      if (o.customerPhone && !seen.has(o.customerPhone)) {
+        seen.add(o.customerPhone);
+        customers.push({ name: o.customerName || 'Customer', phone: o.customerPhone });
+      }
+    }
+
+    const result = await sendBulkSMS(customers, content);
     res.json({ success: true, data: result });
   } catch (error) {
     next(error);
